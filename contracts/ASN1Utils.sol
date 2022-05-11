@@ -19,7 +19,7 @@ library ASN1Utils {
     // additional bytes in which the length is encoded
 
     // The input to DERLength is therefore not the length byte but a pointer to it, in case the next bytes need to be read:
-    function DERObjectLengths(bytes32 ptr) public view returns (ObjectLengths memory) {
+    function DERObjectLengths(uint256 ptr) public view returns (ObjectLengths memory) {
         // bytes1 tagByte;
         bytes1 lengthByte;
         uint256 ObjectLength;
@@ -30,7 +30,7 @@ library ASN1Utils {
         // If the first bit is 1, the rest encodes the number of bytes
         if(firstBitIsOne(lengthByte)){
             uint256 result = 0;
-            uint256 tmpPtr = uint256(ptr) + 1; 
+            uint256 tmpPtr = ptr + 1; 
             uint8 numBytes = uint8(lengthByte & 0x7f); //all but first bit which is 1
             uint256 places;
             bytes1 nextByte;
@@ -53,25 +53,31 @@ library ASN1Utils {
 
     // Takes a pointer to the start of a DER object and returns a pointer to the start of the next DER Object
     // If the Object is a sequence, it will go within the sequence
-    function getNextDERObjectPtr(bytes32 ptr) public view returns (bytes32 newPtr) {
-        uint8 tag;
+    function getNextDERObjectPtr(uint256 ptr) public view returns (uint256 newPtr) {
+        ObjectLengths memory lengths = DERObjectLengths(ptr);
+        // Find whether it's a sequence (starts with 0x30)
+        bytes1 tag;
         assembly {
             tag := mload(ptr)
         }
+
+        // If it's a sequence, go inside for the next object
         if (tag == 0x30) {
-            console.log('is sequence');
+            return ptr + lengths.numLengthBytes + 1;
+        // Otherwise, skip it for the next object
         } else {
-            console.log('is not sequence');
+            return ptr + lengths.numLengthBytes + lengths.numValueBytes + 1;
         }
+        
         
     }
 
     // Takes a pointer to the start of a DER object and returns the bytes of the DER object
-    function getDERObjectContents(bytes memory derBytes, bytes32 ptr) public view returns (bytes memory value) {
-        uint256 rootPtr = uint256( getFirstDERObjectPtr(derBytes) );
+    function getDERObjectContents(bytes memory derBytes, uint256 ptr) public view returns (bytes memory value) {
+        uint256 rootPtr = getFirstDERObjectPtr(derBytes);
         ObjectLengths memory lengths = DERObjectLengths(ptr);
-        uint256 startPtr = uint256(ptr) + 1 + lengths.numLengthBytes;
-        uint256 endPtr = startPtr + 1 + lengths.numValueBytes;
+        uint256 startPtr = ptr + 1 + lengths.numLengthBytes;
+        uint256 endPtr = startPtr + lengths.numValueBytes;
         uint256 idxStart = startPtr - rootPtr;
         uint256 idxEnd = endPtr - rootPtr;
         bytes1 asdfgh;
@@ -82,7 +88,7 @@ library ASN1Utils {
     }
 
 
-    function getFirstDERObjectPtr(bytes memory derBytes) public pure returns (bytes32 start) {
+    function getFirstDERObjectPtr(bytes memory derBytes) public pure returns (uint256 start) {
         assembly {
             // Start of pointer is 256 bits (0x20 bytes) encoding length of b. Skip those and start at the actual content:
             start := add(derBytes, 0x20)
@@ -91,13 +97,17 @@ library ASN1Utils {
 
     // Testing functions
     function DERObjectLengthTest(bytes memory derBytes) public view returns (uint256 derObjectlength) {
-        bytes32 ptr = getFirstDERObjectPtr(derBytes);
+        uint256 ptr = getFirstDERObjectPtr(derBytes);
         ObjectLengths memory lengths = DERObjectLengths(ptr);
         return lengths.numValueBytes;
     }
 
     function DERObjectValueTest(bytes memory derBytes) public view returns (bytes memory value) {
         return getDERObjectContents(derBytes, getFirstDERObjectPtr(derBytes));
+    }
+
+    function nextDERObjectPtrTest(bytes memory derBytes) public view returns (uint256 value) {
+        return getNextDERObjectPtr(getFirstDERObjectPtr(derBytes));
     }
 
 }
