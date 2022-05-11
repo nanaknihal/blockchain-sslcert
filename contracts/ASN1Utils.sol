@@ -80,10 +80,6 @@ library ASN1Utils {
         uint256 endPtr = startPtr + lengths.numValueBytes;
         uint256 idxStart = startPtr - rootPtr;
         uint256 idxEnd = endPtr - rootPtr;
-        bytes1 asdfgh;
-        assembly {
-            asdfgh := mload(startPtr)
-        }
         return WTFUtils.sliceBytesMemory(derBytes, idxStart, idxEnd);
     }
 
