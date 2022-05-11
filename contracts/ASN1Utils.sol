@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import 'hardhat/console.sol';
+import { WTFUtils } from "contracts/WTFUtils.sol";
 
 library ASN1Utils { 
     struct ObjectLengths {
         uint256 numLengthBytes; // number of bytes encoding length of the value
-        uint256 numValuesBytes; // number of bytes in the value
+        uint256 numValueBytes; // number of bytes in the value
 
     }
 
@@ -13,7 +14,7 @@ library ASN1Utils {
         return (b_ & 0x80) == 0x80;
     }
 
-    // DER fields are encoded as (tag, length, value). The problem is that length can sometimes be > 256 bytes, so can't always be encoded in one byte
+    // DER Objects are encoded as (tag, length, value). The problem is that length can sometimes be > 256 bytes, so can't always be encoded in one byte
     // In case it's over 127 bytes, the length-encoding byte will be set to 1xxxxxxx, where xxxxxxx is a binary number representing the number of
     // additional bytes in which the length is encoded
 
@@ -21,7 +22,7 @@ library ASN1Utils {
     function DERObjectLengths(bytes32 ptr) public view returns (ObjectLengths memory) {
         // bytes1 tagByte;
         bytes1 lengthByte;
-        uint256 fieldLength;
+        uint256 ObjectLength;
         assembly {
             // tagByte := mload(ptr)
             lengthByte := mload(add(ptr, 1))
@@ -50,22 +51,47 @@ library ASN1Utils {
 
     }
 
-    // Takes a pointer to the start of a DER field and returns a pointer to the start of the next DER field
-    function getNextDERField(bytes32 ptr) public pure returns (bytes32 newPtr) {
+    // Takes a pointer to the start of a DER object and returns a pointer to the start of the next DER Object
+    // If the Object is a sequence, it will go within the sequence
+    function getNextDERObjectPtr(bytes32 ptr) public view returns (bytes32 newPtr) {
+        uint8 tag;
+        assembly {
+            tag := mload(ptr)
+        }
+        if (tag == 0x30) {
+            console.log('is sequence');
+        } else {
+            console.log('is not sequence');
+        }
         
     }
 
-    function getFirstDERFieldPtr(bytes memory derBytes) public pure returns (bytes32 start) {
+    // Takes a pointer to the start of a DER object and returns the bytes of the DER object
+    function getDERObjectContents(bytes memory derBytes, bytes32 ptr) public view returns (bytes memory value) {
+        uint256 rootPtr = uint256( getFirstDERObjectPtr(derBytes) );
+        ObjectLengths memory lengths = DERObjectLengths(ptr);
+        uint256 startPtr = uint256(ptr) + lengths.numLengthBytes;
+        uint256 endPtr = startPtr + lengths.numValueBytes;
+        uint256 idxStart = startPtr - rootPtr;
+        uint256 idxEnd = endPtr - rootPtr;
+        return WTFUtils.sliceBytesMemory(derBytes, idxStart, idxEnd);
+    }
+
+
+    function getFirstDERObjectPtr(bytes memory derBytes) public pure returns (bytes32 start) {
         assembly {
             // Start of pointer is 256 bits (0x20 bytes) encoding length of b. Skip those and start at the actual content:
             start := add(derBytes, 0x20)
         }
     }
 
-    function DERFieldLengthTest(bytes memory derBytes) public view returns (uint256 derFieldlength) {
-        bytes32 ptr = getFirstDERFieldPtr(derBytes);
+    // Testing functions
+    function DERObjectLengthTest(bytes memory derBytes) public view returns (uint256 derObjectlength) {
+        bytes32 ptr = getFirstDERObjectPtr(derBytes);
         ObjectLengths memory lengths = DERObjectLengths(ptr);
-        return lengths.numValuesBytes;
+        return lengths.numValueBytes;
     }
+
+    function abcde(bytes memory derBytes) public view returns (uint256 ) {}
 
 }

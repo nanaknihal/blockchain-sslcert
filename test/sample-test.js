@@ -4,7 +4,8 @@ const { ethers } = require("hardhat");
 
 describe('ASN.1 parsing', function () {
   before(async function(){
-    this.a1u = await (await ethers.getContractFactory('ASN1Utils')).deploy()
+    this.wtfu = await (await ethers.getContractFactory('WTFUtils')).deploy()
+    this.a1u = await (await ethers.getContractFactory('ASN1Utils', {libraries: {'WTFUtils' : this.wtfu.address}})).deploy()
   });
 
   it('getTagAndLength()', async function () {
@@ -15,8 +16,8 @@ describe('ASN.1 parsing', function () {
     expect(await this.a1u.firstBitIsOne(0b0000001)).to.equal(false)
   });
 
-  it('indirectly test DERFieldLength (it is hard to test as it requries memory pointer as the argument)', async function () {
-    expect(await this.a1u.DERFieldLengthTest(ethers.utils.arrayify('0x3082051A'))).to.equal(1306)
-    expect(await this.a1u.DERFieldLengthTest(ethers.utils.arrayify('0x3002051A'))).to.equal(2)
+  it('indirectly test DERObjectLength (it is hard to test as it requries memory pointer as the argument)', async function () {
+    expect(await this.a1u.DERObjectLengthTest(ethers.utils.arrayify('0x3082051A'))).to.equal(1306)
+    expect(await this.a1u.DERObjectLengthTest(ethers.utils.arrayify('0x3002051A'))).to.equal(2)
   });
 });
