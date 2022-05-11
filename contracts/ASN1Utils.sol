@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 import 'hardhat/console.sol';
 
 library ASN1Utils { 
-    struct Position {
-        uint256 start; // index of first byte
-        uint256 end; // index of last byte + 1 (like slice notation)
+    struct ObjectLengths {
+        uint256 numLengthBytes; // number of bytes encoding length of the value
+        uint256 numValuesBytes; // number of bytes in the value
+
     }
 
     function firstBitIsOne(bytes1 b_) public pure returns (bool oneOrZero) {
@@ -17,7 +18,7 @@ library ASN1Utils {
     // additional bytes in which the length is encoded
 
     // The input to DERLength is therefore not the length byte but a pointer to it, in case the next bytes need to be read:
-    function DERFieldPosition(bytes32 ptr) public view returns (Position memory) {
+    function DERObjectLengths(bytes32 ptr) public view returns (ObjectLengths memory) {
         // bytes1 tagByte;
         bytes1 lengthByte;
         uint256 fieldLength;
@@ -41,20 +42,16 @@ library ASN1Utils {
                 }
                 result += uint8(nextByte)*places;
             }
-            uint256 start = uint(ptr) + 2 + numBytes; // Where field starts (beginning ptr + 1 lengthByte + number of additional bytes to encode length + 1 byte to reach next byte)
-            uint256 end = start + result;
-            return Position(start, end);
+
+            return ObjectLengths(numBytes, result);
         } else {
-            uint256 result = uint256(uint8(lengthByte));
-            uint256 start = uint(ptr) + 2; // Where field starts (beginning ptr + 1 lengthByte + 1 to reach next byte)
-            uint end = start + result;
-            return Position(start, end);
+            return ObjectLengths(1, uint256(uint8(lengthByte)));
         }
 
     }
 
     // Takes a pointer to the start of a DER field and returns a pointer to the start of the next DER field
-    function skipDERField(bytes32 ptr) public pure returns (bytes32 newPtr) {
+    function getNextDERField(bytes32 ptr) public pure returns (bytes32 newPtr) {
         
     }
 
@@ -67,8 +64,8 @@ library ASN1Utils {
 
     function DERFieldLengthTest(bytes memory derBytes) public view returns (uint256 derFieldlength) {
         bytes32 ptr = getFirstDERFieldPtr(derBytes);
-        Position memory pos = DERFieldPosition(ptr);
-        return pos.end - pos.start;
+        ObjectLengths memory lengths = DERObjectLengths(ptr);
+        return lengths.numValuesBytes;
     }
 
 }
