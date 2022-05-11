@@ -102,8 +102,17 @@ library ASN1Utils {
         return getDERObjectContents(derBytes, getFirstDERObjectPtr(derBytes));
     }
 
-    function nextDERObjectPtrTest(bytes memory derBytes) public view returns (uint256 value) {
-        return getNextDERObjectPtr(getFirstDERObjectPtr(derBytes));
+    function nextDERObjectPtrTest(bytes memory derBytes) public view returns (bytes1 value) {
+        uint256 newPtr = getNextDERObjectPtr(
+            getNextDERObjectPtr(
+                getNextDERObjectPtr(
+                    getFirstDERObjectPtr(derBytes)
+                )
+            )
+        );
+        assembly {
+            value := mload(newPtr)
+        }
     }
 
 }
