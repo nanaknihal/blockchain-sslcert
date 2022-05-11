@@ -44,7 +44,7 @@ library ASN1Utils {
                 result += uint8(nextByte)*places;
             }
 
-            return ObjectLengths(numBytes, result);
+            return ObjectLengths(1 + numBytes, result);
         } else {
             return ObjectLengths(1, uint256(uint8(lengthByte)));
         }
@@ -70,10 +70,14 @@ library ASN1Utils {
     function getDERObjectContents(bytes memory derBytes, bytes32 ptr) public view returns (bytes memory value) {
         uint256 rootPtr = uint256( getFirstDERObjectPtr(derBytes) );
         ObjectLengths memory lengths = DERObjectLengths(ptr);
-        uint256 startPtr = uint256(ptr) + lengths.numLengthBytes;
-        uint256 endPtr = startPtr + lengths.numValueBytes;
+        uint256 startPtr = uint256(ptr) + 1 + lengths.numLengthBytes;
+        uint256 endPtr = startPtr + 1 + lengths.numValueBytes;
         uint256 idxStart = startPtr - rootPtr;
         uint256 idxEnd = endPtr - rootPtr;
+        bytes1 asdfgh;
+        assembly {
+            asdfgh := mload(startPtr)
+        }
         return WTFUtils.sliceBytesMemory(derBytes, idxStart, idxEnd);
     }
 
@@ -92,6 +96,8 @@ library ASN1Utils {
         return lengths.numValueBytes;
     }
 
-    function abcde(bytes memory derBytes) public view returns (uint256 ) {}
+    function DERObjectValueTest(bytes memory derBytes) public view returns (bytes memory value) {
+        return getDERObjectContents(derBytes, getFirstDERObjectPtr(derBytes));
+    }
 
 }
