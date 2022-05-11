@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 import 'hardhat/console.sol';
 
-library ASN1Utils { //Should be library, not contract
+library ASN1Utils { 
     struct Position {
-        uint256 start;
-        uint256 end;
+        uint256 start; // index of first byte
+        uint256 end; // index of last byte + 1 (like slice notation)
     }
 
     function firstBitIsOne(bytes1 b_) public pure returns (bool oneOrZero) {
