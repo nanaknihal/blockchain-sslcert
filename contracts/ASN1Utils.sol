@@ -3,6 +3,10 @@ pragma solidity ^0.8.0;
 import 'hardhat/console.sol';
 
 library ASN1Utils { //Should be library, not contract
+    struct Position {
+        uint256 start;
+        uint256 end;
+    }
 
     function firstBitIsOne(bytes1 b_) public pure returns (bool oneOrZero) {
         return (b_ & 0x80) == 0x80;
@@ -13,21 +17,19 @@ library ASN1Utils { //Should be library, not contract
     // additional bytes in which the length is encoded
 
     // The input to DERLength is therefore not the length byte but a pointer to it, in case the next bytes need to be read:
-    function DERFieldLength(bytes32 ptr) public view returns (uint256 length) {
+    function DERFieldPosition(bytes32 ptr) public view returns (Position memory) {
         // bytes1 tagByte;
         bytes1 lengthByte;
+        uint256 fieldLength;
         assembly {
             // tagByte := mload(ptr)
             lengthByte := mload(add(ptr, 1))
         }
-        console.logBytes1(lengthByte);
-        console.log(firstBitIsOne(lengthByte));
         // If the first bit is 1, the rest encodes the number of bytes
         if(firstBitIsOne(lengthByte)){
             uint256 result = 0;
             uint256 tmpPtr = uint256(ptr) + 1; 
             uint8 numBytes = uint8(lengthByte & 0x7f); //all but first bit which is 1
-            console.log('numbytes', numBytes);
             uint256 places;
             bytes1 nextByte;
             uint i;
@@ -39,9 +41,14 @@ library ASN1Utils { //Should be library, not contract
                 }
                 result += uint8(nextByte)*places;
             }
-            return result; 
+            uint256 start = uint(ptr) + 2 + numBytes; // Where field starts (beginning ptr + 1 lengthByte + number of additional bytes to encode length + 1 byte to reach next byte)
+            uint256 end = start + result;
+            return Position(start, end);
         } else {
-            return uint256(uint8(lengthByte));
+            uint256 result = uint256(uint8(lengthByte));
+            uint256 start = uint(ptr) + 2; // Where field starts (beginning ptr + 1 lengthByte + 1 to reach next byte)
+            uint end = start + result;
+            return Position(start, end);
         }
 
     }
@@ -60,7 +67,8 @@ library ASN1Utils { //Should be library, not contract
 
     function DERFieldLengthTest(bytes memory derBytes) public view returns (uint256 derFieldlength) {
         bytes32 ptr = getFirstDERFieldPtr(derBytes);
-        return DERFieldLength(ptr);
+        Position memory pos = DERFieldPosition(ptr);
+        return pos.end - pos.start;
     }
 
 }
