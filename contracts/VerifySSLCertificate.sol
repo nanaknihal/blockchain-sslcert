@@ -2,14 +2,10 @@
 pragma solidity ^0.8.0;
 
 import { WTFUtils } from "contracts/WTFUtils.sol";
+import { ASN1Utils } from "contracts/ASN1Utils.sol";
 import "hardhat/console.sol";
 
 contract VerifySSLCertificate {
-    struct OwnershipInfo {
-        bytes pubkeyModulus;
-        bytes domainName;
-    }
-
     // e and n are exponent and modulus of the authority's public key
     uint256 public e;
     bytes public n;
@@ -32,11 +28,6 @@ contract VerifySSLCertificate {
     //     e = newE;
     //     n = newN;
     // }
-
-    // gets the owner domain name and private keyfrom the SSL certificate in DER format
-    function getCertOwner(bytes memory tbsCertificate) public view returns (OwnershipInfo memory subject) {
-
-    }
     
     function verifyMe(bytes memory tbsCert, bytes calldata tbsCertSignature, bytes memory addr, bytes calldata signedAddr) public {
         // 1. Require that CA signed tbsCertificate
@@ -45,7 +36,7 @@ contract VerifySSLCertificate {
             "Validation of certifiate signature failed"
         );
         // 2. If valid signature, get for the domain name and public key listen in tbsCertificate. These both belong to the website owner
-        OwnershipInfo memory certOwner = getCertOwner(tbsCert);
+        ASN1Utils.OwnershipInfo memory certOwner = ASN1Utils.getCertOwner(tbsCert);
 
         // 3. Verify signedAddr is signed by certOwner
         require(WTFUtils.verifyRSASignature(65537, certOwner.pubkeyModulus, addr, signedAddr), "failed to validate signature of your address");

@@ -9,6 +9,11 @@ library ASN1Utils {
         uint256 numValueBytes; // number of bytes in the value
 
     }
+    // Ownership info from a ASN1 DER X.509 SSL certificate
+    struct OwnershipInfo {
+        bytes domainName;
+        bytes pubkeyModulus;
+    }
 
     function firstBitIsOne(bytes1 b_) public pure returns (bool oneOrZero) {
         return (b_ & 0x80) == 0x80;
@@ -22,9 +27,7 @@ library ASN1Utils {
     function DERObjectLengths(uint256 ptr) public view returns (ObjectLengths memory) {
         // bytes1 tagByte;
         bytes1 lengthByte;
-        uint256 ObjectLength;
         assembly {
-            // tagByte := mload(ptr)
             lengthByte := mload(add(ptr, 1))
         }
         // If the first bit is 1, the rest encodes the number of bytes
@@ -60,10 +63,13 @@ library ASN1Utils {
         assembly {
             tag := mload(ptr)
         }
-
-        // If it's a sequence, go inside for the next object
-        if (tag == 0x30) {
+        // console.log('adding numLengthBytes numValueBytes', lengths.numLengthBytes, lengths.numValueBytes);
+        // If it's a sequence or set, go inside for the next object
+        if ((tag == 0x30) || (tag == 0x31) || (tag == 0x03)) {
             return ptr + lengths.numLengthBytes + 1;
+        // If it's 0x00, just ignore as if it has no length and skip? Couldn't find this in ASN1 spec but in practice it seems to be done???
+        } else if(tag == 0x00) {
+            return ptr + 1;
         // Otherwise, skip it for the next object
         } else {
             return ptr + lengths.numLengthBytes + lengths.numValueBytes + 1;
@@ -89,6 +95,36 @@ library ASN1Utils {
             // Start of pointer is 256 bits (0x20 bytes) encoding length of b. Skip those and start at the actual content:
             start := add(derBytes, 0x20)
         }
+    }
+    
+    // gets the owner domain name and private keyfrom the SSL certificate in DER format
+    function getCertOwner(bytes memory tbsCertificate) public view returns (OwnershipInfo memory subject) {
+        bytes1 tag;
+        uint256 firstPtr = getFirstDERObjectPtr(tbsCertificate);
+        uint256 tmp = firstPtr;
+        uint8 i;
+        // TODO: make this more extensible if SSL certificates can follow different formats (I haven't checked whether their formats can differ or 27 is always right)
+        // the owner should be the 27th object in DER format
+        for(i=0; i<27; i++){
+            tmp = getNextDERObjectPtr(tmp);
+        }
+        assembly {
+            tag := mload(tmp)
+        }
+        require(tag == 0x13, "PrintableString not found at 28th Object in tbsCertificate"); 
+        bytes memory domainName = getDERObjectContents(tbsCertificate, tmp);
+        
+        // First 27, now 8 more for public key
+        for(i=0; i<8; i++){
+            tmp = getNextDERObjectPtr(tmp);
+        }
+        assembly {
+            tag := mload(tmp)
+        }
+        require(tag == 0x02, "Integer not found at the nth Object in tbsCertificate"); 
+        bytes memory pubkeyModulus = getDERObjectContents(tbsCertificate, tmp);
+        require(pubkeyModulus.length == 257, "public key is of wrong length"); //why is this 257 with 0 in front, not 256??
+        return OwnershipInfo(domainName, pubkeyModulus);
     }
 
     // Testing functions

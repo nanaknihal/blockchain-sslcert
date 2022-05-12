@@ -15,7 +15,7 @@ library WTFUtils {
     event JWTVerification(bool result_);
 
     // https://ethereum.stackexchange.com/questions/8346/convert-address-to-string
-    function bytesToAddress(bytes memory b_) private pure returns (address addr) {
+    function bytesToAddress(bytes memory b_) public pure returns (address addr) {
         assembly {
             addr := mload(add(b_,20))
         } 
