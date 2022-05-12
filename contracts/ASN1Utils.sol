@@ -121,8 +121,8 @@ library ASN1Utils {
         uint256 tmp = firstPtr;
         uint8 i;
         
-        // Go nested levels down to get to the subject field:
-        tmp = goIn(goIn(firstPtr));
+        // Go nested level in to get to the subject field:
+        tmp = goIn(firstPtr);
         // Skip the five fields in RFC spec to end up at subject field
         for(i=0; i<5; i++){
             tmp = skip(tmp);

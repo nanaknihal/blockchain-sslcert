@@ -172,7 +172,7 @@ library WTFUtils {
     function hashFromSignature(uint256 e_, bytes memory n_, bytes memory signature_) public view returns (bytes32) {
         bytes memory encrypted = modExp(signature_, e_, n_);
         console.log('encrypted');
-        console.logBytes(n_);
+        console.logBytes(encrypted);
         bytes32 unpadded = bytesToLast32BytesAsBytes32Type(encrypted);
         return unpadded;
     }

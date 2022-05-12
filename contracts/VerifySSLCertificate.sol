@@ -33,7 +33,7 @@ contract VerifySSLCertificate {
         // 1. Require that CA signed tbsCertificate
         require(
             WTFUtils.verifyRSASignature(e, n, tbsCertSignature, tbsCert),
-            "Validation of certifiate signature failed"
+            "Validation of certificate signature failed"
         );
         // 2. If valid signature, get for the domain name and public key listen in tbsCertificate. These both belong to the website owner
         ASN1Utils.OwnershipInfo memory certOwner = ASN1Utils.getCertOwner(tbsCert);
