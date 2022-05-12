@@ -21,15 +21,11 @@ describe('ASN.1 parsing', function () {
     expect(await this.a1u.DERObjectLengthTest(ethers.utils.arrayify('0x3082051A'))).to.equal(1306)
     expect(await this.a1u.DERObjectLengthTest(ethers.utils.arrayify('0x3002051A'))).to.equal(2)
   });
+  
   it('indirectly test DER object value', async function () {
     // console.log(
     //   await this.a1u.DERObjectValueTest(ethers.utils.arrayify(cert))
     // )
   });
   
-  it('indirectly test traversing to next DER fields', async function () {
-    // console.log(
-    //   await this.a1u.nextDERObjectPtrTest(cert)
-    // ) 
-  });
 });
