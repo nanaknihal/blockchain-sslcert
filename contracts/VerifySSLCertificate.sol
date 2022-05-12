@@ -43,7 +43,6 @@ contract VerifySSLCertificate {
         
         // 4. Give domain name to addr
         address asAddr = WTFUtils.bytesToAddress(addr);
-        console.log('asaddr', asAddr);
         domainToAddr[certOwner.domainName] = asAddr;
         addrToDomain[asAddr] = certOwner.domainName;
         return true;

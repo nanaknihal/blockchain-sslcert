@@ -16,8 +16,6 @@ library WTFUtils {
         assembly {
             addr := mload(add(b_,20))
         } 
-        console.logBytes(b_);
-        console.log(addr);
     }
 
     // Covnerts bytes32 to address

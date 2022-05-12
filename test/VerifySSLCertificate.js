@@ -56,14 +56,6 @@ describe('VerifySSLCertificate.sol', function () {
           )
         ).to.equal(true)
 
-        console.log('arguments', 
-          65537, 
-          certPubkeyN, 
-          '\n',
-          signedAddress, 
-          '\n',
-          addressBytes
-        )
   });
 
   it('Verify SSL certificate', async function () { //Should be elsewhere or likely part of integration test

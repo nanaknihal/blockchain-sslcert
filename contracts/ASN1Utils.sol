@@ -138,9 +138,6 @@ library ASN1Utils {
         require(tag == 0x13, "PrintableString not found in second subfield of the DER-format SSL certificate's subject field"); 
 
         bytes memory domainName = getDERObjectContents(tbsCertificate, tmp);
-        // console.log(goIn();
-        // console.log('abc');
-        console.logBytes(getDERObjectContents(tbsCertificate, tmp));
         
         tmp = goIn(1 + goIn(skip(goIn(skip(subject))))); //for some reason, there's an extra 00 in the certificate which seems to go against RFC spec but obviously must be right -- hence, skipping it with +1
         assembly {
