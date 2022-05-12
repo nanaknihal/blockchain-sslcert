@@ -29,7 +29,7 @@ contract VerifySSLCertificate {
     //     n = newN;
     // }
     
-    function verifyMe(bytes memory tbsCert, bytes calldata tbsCertSignature, bytes memory addr, bytes calldata signedAddr) public {
+    function verifyMe(bytes memory tbsCert, bytes calldata tbsCertSignature, bytes memory addr, bytes calldata signedAddr) public returns (bool success) {
         // 1. Require that CA signed tbsCertificate
         require(
             WTFUtils.verifyRSASignature(e, n, tbsCertSignature, tbsCert),
@@ -37,13 +37,15 @@ contract VerifySSLCertificate {
         );
         // 2. If valid signature, get for the domain name and public key listen in tbsCertificate. These both belong to the website owner
         ASN1Utils.OwnershipInfo memory certOwner = ASN1Utils.getCertOwner(tbsCert);
-
+        
         // 3. Verify signedAddr is signed by certOwner
-        require(WTFUtils.verifyRSASignature(65537, certOwner.pubkeyModulus, addr, signedAddr), "failed to validate signature of your address");
+        require(WTFUtils.verifyRSASignature(65537, certOwner.pubkeyModulus, signedAddr, addr), "failed to validate signature of your address");
         
         // 4. Give domain name to addr
         address asAddr = WTFUtils.bytesToAddress(addr);
+        console.log('asaddr', asAddr);
         domainToAddr[certOwner.domainName] = asAddr;
         addrToDomain[asAddr] = certOwner.domainName;
+        return true;
     }
 }

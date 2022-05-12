@@ -12,10 +12,12 @@ library WTFUtils {
     }
 
     // https://ethereum.stackexchange.com/questions/8346/convert-address-to-string
-    function bytesToAddress(bytes memory b_) public pure returns (address addr) {
+    function bytesToAddress(bytes memory b_) public view returns (address addr) {
         assembly {
             addr := mload(add(b_,20))
         } 
+        console.logBytes(b_);
+        console.log(addr);
     }
 
     // Covnerts bytes32 to address
@@ -171,8 +173,6 @@ library WTFUtils {
     // Get the hash of the JWT from the signature
     function hashFromSignature(uint256 e_, bytes memory n_, bytes memory signature_) public view returns (bytes32) {
         bytes memory encrypted = modExp(signature_, e_, n_);
-        console.log('encrypted');
-        console.logBytes(encrypted);
         bytes32 unpadded = bytesToLast32BytesAsBytes32Type(encrypted);
         return unpadded;
     }
