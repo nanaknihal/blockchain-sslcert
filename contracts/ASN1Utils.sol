@@ -54,29 +54,46 @@ library ASN1Utils {
 
     }
 
+    // Takes a pointer to DER object start and goes within it (i.e., skips tag and length bytes then returns a pointer to the next byte, the start of the object's value)
+    function goIn(uint256 curPtr) public view returns (uint256 newPtr) {
+        ObjectLengths memory lengths = DERObjectLengths(curPtr);
+        return curPtr + lengths.numLengthBytes + 1;
+    }
+
+    // Takes a pointer to DER object start and skips it (i.e., skips tag, length, and value bytes then returns a pointer to the next object's start)
+    function skip(uint256 curPtr) public view returns (uint256 newPtr) {
+        ObjectLengths memory lengths = DERObjectLengths(curPtr);
+        return curPtr + lengths.numLengthBytes + lengths.numValueBytes + 1;
+    }
+
+    // // If it's 0x00, just ignore as if it has no length and skip? Couldn't find this in ASN1 spec but in practice it seems to be done???
+    // } else if(tag == 0x00) {
+    //     return ptr + 1;
+
+
     // Takes a pointer to the start of a DER object and returns a pointer to the start of the next DER Object
     // If the Object is a sequence, it will go within the sequence
-    function getNextDERObjectPtr(uint256 ptr) public view returns (uint256 newPtr) {
-        ObjectLengths memory lengths = DERObjectLengths(ptr);
-        // Find whether it's a sequence (starts with 0x30)
-        bytes1 tag;
-        assembly {
-            tag := mload(ptr)
-        }
-        // console.log('adding numLengthBytes numValueBytes', lengths.numLengthBytes, lengths.numValueBytes);
-        // If it's a sequence or set, go inside for the next object
-        if ((tag == 0x30) || (tag == 0x31) || (tag == 0x03)) {
-            return ptr + lengths.numLengthBytes + 1;
-        // If it's 0x00, just ignore as if it has no length and skip? Couldn't find this in ASN1 spec but in practice it seems to be done???
-        } else if(tag == 0x00) {
-            return ptr + 1;
-        // Otherwise, skip it for the next object
-        } else {
-            return ptr + lengths.numLengthBytes + lengths.numValueBytes + 1;
-        }
+    // function getNextDERObjectPtr(uint256 ptr) public view returns (uint256 newPtr) {
+    //     ObjectLengths memory lengths = DERObjectLengths(ptr);
+    //     // Find whether it's a sequence (starts with 0x30)
+    //     bytes1 tag;
+    //     assembly {
+    //         tag := mload(ptr)
+    //     }
+    //     // console.log('adding numLengthBytes numValueBytes', lengths.numLengthBytes, lengths.numValueBytes);
+    //     // If it's a sequence or set, go inside for the next object
+    //     if ((tag == 0x30) || (tag == 0x31) || (tag == 0x03)) {
+    //         return ptr + lengths.numLengthBytes + 1;
+    //     // If it's 0x00, just ignore as if it has no length and skip? Couldn't find this in ASN1 spec but in practice it seems to be done???
+    //     } else if(tag == 0x00) {
+    //         return ptr + 1;
+    //     // Otherwise, skip it for the next object
+    //     } else {
+    //         return ptr + lengths.numLengthBytes + lengths.numValueBytes + 1;
+    //     }
         
         
-    }
+    // }
 
     // Takes a pointer to the start of a DER object and returns the bytes of the DER object
     function getDERObjectContents(bytes memory derBytes, uint256 ptr) public view returns (bytes memory value) {
@@ -103,27 +120,36 @@ library ASN1Utils {
         uint256 firstPtr = getFirstDERObjectPtr(tbsCertificate);
         uint256 tmp = firstPtr;
         uint8 i;
-        // TODO: make this more extensible if SSL certificates can follow different formats (I haven't checked whether their formats can differ or 27 is always right)
-        // the owner should be the 27th object in DER format
-        for(i=0; i<27; i++){
-            tmp = getNextDERObjectPtr(tmp);
-        }
-        assembly {
-            tag := mload(tmp)
-        }
-        require(tag == 0x13, "PrintableString not found at 28th Object in tbsCertificate"); 
-        bytes memory domainName = getDERObjectContents(tbsCertificate, tmp);
         
-        // First 27, now 8 more for public key
-        for(i=0; i<8; i++){
-            tmp = getNextDERObjectPtr(tmp);
+        // Go nested levels down to get to the subject field:
+        tmp = goIn(goIn(firstPtr));
+        // Skip the five fields in RFC spec to end up at subject field
+        for(i=0; i<5; i++){
+            tmp = skip(tmp);
         }
+        // Save this location for use later -- we will neede to goIn() now and revert back to this pointer later to keep traversing at the outer level
+        uint256 subject = tmp; 
+        // go three levels deep, then skip to the second field to get the domain name //TODO : ensure this is where domain name is for all certificate types
+        tmp = skip(goIn(goIn(goIn(tmp))));
+
         assembly {
             tag := mload(tmp)
         }
-        require(tag == 0x02, "Integer not found at the nth Object in tbsCertificate"); 
+        require(tag == 0x13, "PrintableString not found in second subfield of the DER-format SSL certificate's subject field"); 
+
+        bytes memory domainName = getDERObjectContents(tbsCertificate, tmp);
+        // console.log(goIn();
+        // console.log('abc');
+        console.logBytes(getDERObjectContents(tbsCertificate, tmp));
+        
+        tmp = goIn(1 + goIn(skip(goIn(skip(subject))))); //for some reason, there's an extra 00 in the certificate which seems to go against RFC spec but obviously must be right -- hence, skipping it with +1
+        assembly {
+            tag := mload(tmp)
+        }
+        require(tag == 0x02, "Integer not found at the predicted subfield for subject public key info"); 
         bytes memory pubkeyModulus = getDERObjectContents(tbsCertificate, tmp);
         require(pubkeyModulus.length == 257, "public key is of wrong length"); //why is this 257 with 0 in front, not 256??
+        // return OwnershipInfo(domainName, pubkeyModulus);
         return OwnershipInfo(domainName, pubkeyModulus);
     }
 
@@ -139,16 +165,16 @@ library ASN1Utils {
     }
 
     function nextDERObjectPtrTest(bytes memory derBytes) public view returns (bytes1 value) {
-        uint256 newPtr = getNextDERObjectPtr(
-            getNextDERObjectPtr(
-                getNextDERObjectPtr(
-                    getFirstDERObjectPtr(derBytes)
-                )
-            )
-        );
-        assembly {
-            value := mload(newPtr)
-        }
+        // uint256 newPtr = getNextDERObjectPtr(
+        //     getNextDERObjectPtr(
+        //         getNextDERObjectPtr(
+        //             getFirstDERObjectPtr(derBytes)
+        //         )
+        //     )
+        // );
+        // assembly {
+        //     value := mload(newPtr)
+        // }
     }
 
 }

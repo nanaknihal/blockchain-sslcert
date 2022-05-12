@@ -11,9 +11,6 @@ library WTFUtils {
       bytes sandwichValue;
     }
 
-
-    event JWTVerification(bool result_);
-
     // https://ethereum.stackexchange.com/questions/8346/convert-address-to-string
     function bytesToAddress(bytes memory b_) public pure returns (address addr) {
         assembly {
@@ -165,16 +162,17 @@ library WTFUtils {
     }
     
     // returns whether JWT is signed by public key e_, n_, and emits an event with verification result
-    function verifyRSASignature(uint256 e_, bytes memory n_, bytes memory signature_, bytes memory message_) public returns (bool) {
+    function verifyRSASignature(uint256 e_, bytes memory n_, bytes memory signature_, bytes memory message_) public view returns (bool) {
         bytes32 hashed = hashFromSignature(e_, n_, signature_);
         bool verified = hashed == sha256(message_);
-        emit JWTVerification(verified);
         return verified;
     }
 
     // Get the hash of the JWT from the signature
     function hashFromSignature(uint256 e_, bytes memory n_, bytes memory signature_) public view returns (bytes32) {
         bytes memory encrypted = modExp(signature_, e_, n_);
+        console.log('encrypted');
+        console.logBytes(n_);
         bytes32 unpadded = bytesToLast32BytesAsBytes32Type(encrypted);
         return unpadded;
     }
