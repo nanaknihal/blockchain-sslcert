@@ -37,7 +37,7 @@ describe('VerifySSLCertificate.sol', function () {
         expect(await ownerInfo.pubkeyModulus).to.equal(certPubkeyN)
     });
 
-    it('Verify signature of address', async function () { //Should be elsewhere or likely part of integration test
+    it('Verify signature of address', async function () {
       expect(
         await this.wtfu.verifyRSASignature(
             65537, 
@@ -49,7 +49,7 @@ describe('VerifySSLCertificate.sol', function () {
 
   });
 
-  it('Verify SSL certificate', async function () { //Should be elsewhere or likely part of integration test
+  it('Verify SSL certificate', async function () {
       let tx = await this.vsc.verifyMe(
         tbsCert,
         tbsCertSignature,
@@ -67,7 +67,49 @@ describe('VerifySSLCertificate.sol', function () {
         ).to.equal(
           ('0x' + addressBytes.toString('hex')).toLowerCase()
         )
-        
-      
-});
   });
+
+  // TODO: better edge cases for each parameter
+  describe('Incorrect parameters causes revert (TODO: find edge cases for each parameter)', async function() {
+    it('tbsCert', async function () {
+      let tx = this.vsc.verifyMe(
+        tbsCert.replace('a','b'),
+        tbsCertSignature,
+        addressBytes,
+        signedAddress,
+      )
+      await expect(tx).to.be.reverted
+    });
+
+    it('tbsCertSignature', async function () {
+      let tx = this.vsc.verifyMe(
+        tbsCert,
+        tbsCertSignature.replace('a','b'),
+        addressBytes,
+        signedAddress,
+      )
+      await expect(tx).to.be.reverted
+    });
+
+    it('addressBytes', async function () {
+      let tx = this.vsc.verifyMe(
+        tbsCert,
+        tbsCertSignature,
+        addressBytes.slice(3, addressBytes.length-4), //just take an arbitrary slice of the address (i imagine there are some better some edge cases but can't think of any rn)
+        signedAddress,
+      )
+      await expect(tx).to.be.reverted
+    });
+
+    it('signedAddress', async function () {
+      let tx = this.vsc.verifyMe(
+        tbsCert,
+        tbsCertSignature,
+        addressBytes,
+        signedAddress.replace('a','b'),
+      )
+      await expect(tx).to.be.reverted
+    });
+
+  });
+});
